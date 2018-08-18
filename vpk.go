@@ -14,6 +14,9 @@ import (
 	"time"
 )
 
+
+const HeaderSize = 28
+
 type entrysort []entrypath
 
 func (s entrysort) Len() int      { return len(s) }
@@ -104,11 +107,15 @@ type vpkentry struct {
 }
 
 type VPK struct {
-	opener     Opener
-	version    uint32
-	treeLength uint32
-	entries    entrysort
-	modtime    time.Time
+	opener     			  Opener
+	version    			  uint32
+	treeLength 			  uint32
+	fileDataSectionSize   uint32
+	archiveMD5SectionSize uint32
+	otherMD5SectionSize   uint32
+	signatureSectionSize  uint32
+	entries    			  entrysort
+	modtime    			  time.Time
 }
 
 type vpkFileEntry struct {
@@ -138,7 +145,7 @@ func (e *vpkFileEntry) Open() (io.ReadCloser, error) {
 			}
 			return nil, err
 		}
-		_, err = f.Seek(12+int64(e.l), os.SEEK_CUR)
+		_, err = f.Seek(HeaderSize+int64(e.l), os.SEEK_CUR)
 	} else {
 		f, err = e.o.Archive(e.e.ArchiveIndex)
 	}
@@ -237,12 +244,32 @@ func Open(o Opener) (*VPK, error) {
 		return nil, err
 	}
 
-	if vpk.version != 1 {
+	if vpk.version != 2 {
 		return nil, ErrUnsupportedVersion(vpk.version)
 	}
 
 	// TODO: verify treeLength
 	err = binary.Read(br, binary.LittleEndian, &vpk.treeLength)
+	if err != nil {
+		return nil, err
+	}
+
+	err = binary.Read(br, binary.LittleEndian, &vpk.fileDataSectionSize)
+	if err != nil {
+		return nil, err
+	}
+
+	err = binary.Read(br, binary.LittleEndian, &vpk.archiveMD5SectionSize)
+	if err != nil {
+		return nil, err
+	}
+
+	err = binary.Read(br, binary.LittleEndian, &vpk.otherMD5SectionSize)
+	if err != nil {
+		return nil, err
+	}
+
+	err = binary.Read(br, binary.LittleEndian, &vpk.signatureSectionSize)
 	if err != nil {
 		return nil, err
 	}
