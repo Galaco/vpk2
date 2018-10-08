@@ -44,7 +44,7 @@ func (s entrysort) find(dir, base, ext string) *entrypath {
 	e := entrypath{dir: dir, base: base, ext: ext}
 	if i := sort.Search(len(s), func(i int) bool {
 		return !s.less(s[i], e)
-	}); i < len(s) && s[i].dir == dir && s[i].base == base && s[i].ext == ext {
+	}); i < len(s) && strings.EqualFold(s[i].dir, dir) && strings.EqualFold(s[i].base, base) && strings.EqualFold(s[i].ext, ext) {
 		return &s[i]
 	}
 
